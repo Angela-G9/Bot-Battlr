@@ -1,54 +1,83 @@
-import React, { useState } from "react";
-import BotCollection from "./Components/BotCollection.jsx";
-import YourBotArmy from "./Components/YourBotArmy.jsx";
-import BotCard from "./Components/BotCard.jsx";
-import "./App.css";
+import React, { useState, useEffect } from 'react';
+import BotCollection from './Components/BotCollection';
+import YourBotArmy from './Components/YourBotArmy';
+import BotSpecs from './Components/BotSpecs';
+import './App.css';
 
 const App = () => {
   const [army, setArmy] = useState([]);
+  const [bots, setBots] = useState([]);
   const [selectedBot, setSelectedBot] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [sortOrder, setSortOrder] = useState('asc');
+  const [searchTerm, setSearchTerm] = useState('');
 
-  // Add bot to the army
+  // Fetch bots from API
+  useEffect(() => {
+    fetch('https://bots-si0g.onrender.com/bots')
+      .then((response) => response.json())
+      .then((data) => {
+        setBots(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError('Failed to load bots');
+        setLoading(false);
+      });
+  }, []);
+
+  // Sort and filter bots
+  const sortedBots = bots
+    .filter((bot) => bot.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    .sort((a, b) => (sortOrder === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)));
+
+  // Enlist bot to the army
   const enlistBot = (bot) => {
-    if (!army.some((b) => b.id === bot.id) && !army.some((b) => b.bot_class === bot.bot_class)) {
-      setArmy((prevArmy) => [...prevArmy, bot]);
+    if (!army.some((b) => b.id === bot.id)) {
+      setArmy([...army, bot]);
+      alert(`${bot.name} has been enlisted!`);
+    }
+    setSelectedBot(null);
+  };
+
+  // Release bot from the army
+  const releaseBot = (bot) => {
+    if (window.confirm(`Are you sure you want to discharge ${bot.name}?`)) {
+      setArmy(army.filter((b) => b.id !== bot.id));
     }
   };
 
-  // Remove bot from the army
-  const releaseBot = (bot) => {
-    setArmy((prevArmy) => prevArmy.filter((b) => b.id !== bot.id));
-  };
-
-  // Discharge bot entirely
-  const dischargeBot = (bot) => {
-    setArmy((prevArmy) => prevArmy.filter((b) => b.id !== bot.id));
-    // Call backend API to delete bot from server
-    fetch(`http://localhost:3000/bots/${bot.id}`, { method: "DELETE" })
-      .then((response) => {
-        if (response.ok) {
-          console.log(`Bot ${bot.name} has been discharged.`);
-        } else {
-          console.error("Failed to discharge bot.");
-        }
-      })
-      .catch((error) => console.error("Error discharging bot:", error));
-  };
-
-  // Return to bot collection
-  const goBackToCollection = () => setSelectedBot(null);
-
+  
   return (
     <div className="app">
       <h1>Bot Battlr</h1>
-      {selectedBot ? (
-        <BotCard bot={selectedBot} onEnlist={enlistBot} onGoBack={goBackToCollection} />
-      ) : (
-        <>
-          <BotCollection onEnlist={enlistBot} setSelectedBot={setSelectedBot} />
-          <YourBotArmy army={army} onRelease={releaseBot} onDischarge={dischargeBot} />
-        </>
-      )}
+      {loading && <p>Loading bots...</p>}
+      {error && <p>{error}</p>}
+
+      <div className="sort-bar">
+        <input
+          type="text"
+          placeholder="Search for a bot"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <select onChange={(e) => setSortOrder(e.target.value)} value={sortOrder}>
+          <option value="asc">Sort by Name (A-Z)</option>
+          <option value="desc">Sort by Name (Z-A)</option>
+        </select>
+      </div>
+
+      <div className="content">
+        {selectedBot ? (
+          <BotSpecs bot={selectedBot} onEnlist={enlistBot} />
+        ) : (
+          <div className="collection-and-army">
+            <BotCollection bots={sortedBots} setSelectedBot={setSelectedBot} />
+            <YourBotArmy army={army} onRelease={releaseBot} />
+          </div>
+        )}
+      </div>
     </div>
   );
 };
