@@ -29,8 +29,15 @@ const App = () => {
 
   // Sort and filter bots
   const sortedBots = bots
-    .filter((bot) => bot.name.toLowerCase().includes(searchTerm.toLowerCase()))
-    .sort((a, b) => (sortOrder === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)));
+  .filter((bot) => bot.name.toLowerCase().includes(searchTerm.toLowerCase()))
+  .sort((a, b) => {
+    const [criteria, order] = sortOrder.split('-');
+    if (criteria === 'name') {
+      return order === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
+    } else {
+      return order === 'asc' ? a[criteria] - b[criteria] : b[criteria] - a[criteria];
+    }
+  });
 
   // Enlist bot to the army
   const enlistBot = (bot) => {
@@ -44,9 +51,44 @@ const App = () => {
   // Release bot from the army
   const releaseBot = (bot) => {
     if (window.confirm(`Are you sure you want to discharge ${bot.name}?`)) {
+      // Remove from the army
       setArmy(army.filter((b) => b.id !== bot.id));
+  
+      // Delete from the backend
+      fetch(`http://localhost:8001/bots/${bot.id}`, {
+        method: 'DELETE',
+      })
+        .then((response) => {
+          if (response.ok) {
+            // Remove from the bots list
+            setBots(bots.filter((b) => b.id !== bot.id));
+          }
+        })
+        .catch((err) => console.error('Error discharging bot:', err));
     }
   };
+   
+  const handleBack = () => {
+    setSelectedBot(null);
+  };
+  
+  // In the render section:
+  {selectedBot ? (
+    <BotSpecs 
+      bot={selectedBot} 
+      onEnlist={enlistBot} 
+      onBack={handleBack} 
+    />
+  ) : (
+    <div className="collection-and-army">
+      <BotCollection 
+        bots={sortedBots} 
+        setSelectedBot={setSelectedBot} 
+        enlistBot={enlistBot} 
+      />
+      <YourBotArmy army={army} onRelease={releaseBot} />
+    </div>
+  )}
 
   
   return (
@@ -73,7 +115,11 @@ const App = () => {
           <BotSpecs bot={selectedBot} onEnlist={enlistBot} />
         ) : (
           <div className="collection-and-army">
-            <BotCollection bots={sortedBots} setSelectedBot={setSelectedBot} />
+            <BotCollection 
+               bots={sortedBots} 
+               setSelectedBot={setSelectedBot} 
+              enlistBot={enlistBot} 
+           />
             <YourBotArmy army={army} onRelease={releaseBot} />
           </div>
         )}
