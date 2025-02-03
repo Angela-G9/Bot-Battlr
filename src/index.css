@@ -4,11 +4,7 @@ body {
   padding: 0;
   background-color: black;
   color: #333;
-  background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/React-icon.svg/512px-React-icon.svg.png');
-    background-size: cover; 
-    background-repeat: no-repeat;
-    background-position: center;
-}
+    }
 
 .app {
   text-align: center;
